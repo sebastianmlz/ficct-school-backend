@@ -1,0 +1,9 @@
+.env
+__pycache__
+.venv
+*.pyc
+*.pyo
+*.pyd
+.vscode
+example.ipynb
+staticfiles/
