@@ -2,3 +2,4 @@ from .user_serializer import UserSerializer, UserListSerializer, PasswordChangeS
 from .group_serializer import GroupSerializer, PermissionSerializer
 from .student_serializer import StudentSerializer, StudentListSerializer
 from .teacher_serializer import TeacherSerializer, TeacherListSerializer
+from .auth_serializer import CustomTokenObtainPairSerializer
