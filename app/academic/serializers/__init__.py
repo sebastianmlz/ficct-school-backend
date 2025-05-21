@@ -1,0 +1,6 @@
+from .course_serializer import CourseSerializer, CourseListSerializer
+from .teacher_assignment_serializer import TeacherAssignmentSerializer
+from .period_serializer import PeriodSerializer, PeriodListSerializer
+from .subject_serializer import SubjectSerializer, SubjectListSerializer
+from .grade_serializer import GradeSerializer, GradeListSerializer
+from .enrollment_serializer import EnrollmentSerializer, EnrollmentListSerializer

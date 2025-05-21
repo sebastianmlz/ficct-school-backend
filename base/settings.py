@@ -64,6 +64,8 @@ INSTALLED_APPS = [
     'storages'
 ]
 
+AUTH_USER_MODEL = 'authentication.User'
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -152,8 +154,6 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-AUTH_USER_MODEL = 'authentication.User'
-
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -190,26 +190,6 @@ SWAGGER_SETTINGS = {
     'VALIDATOR_URL': None,
     'PERSIST_AUTH': True,
 }
-
-PINECONE_INDEX_NAME = config('PINECONE_INDEX_NAME')
-PINECONE_API_KEY = config('PINECONE_API_KEY')
-
-OPENAI_AZURE_API_KEY = config('OPENAI_AZURE_API_KEY')
-OPENAI_AZURE_API_BASE = config('OPENAI_AZURE_API_BASE')
-OPENAI_AZURE_API_VERSION = config('OPENAI_AZURE_API_VERSION')
-OPENAI_BASE_MODEL = config('OPENAI_BASE_MODEL')
-OPENAI_THINKING_MODEL = config('OPENAI_THINKING_MODEL')
-OPENAI_EMBEDDING_MODEL = config('OPENAI_EMBEDDING_MODEL')
-
-USD_TO_BS_RATE = 20
-STRIPE_API_KEY = config('STRIPE_API_KEY')
-STRIPE_PUBLIC_KEY = config('STRIPE_PUBLIC_KEY')
-STRIPE_WEBHOOK_SECRET = config('STRIPE_WEBHOOK_SECRET')
-
-PAYPAL_CLIENT_ID = config('PAYPAL_CLIENT_ID')
-PAYPAL_CLIENT_SECRET = config('PAYPAL_CLIENT_SECRET')
-PAYPAL_SANDBOX = config('PAYPAL_SANDBOX', default='True') == 'True'
-PAYPAL_BASE_URL = "https://api-m.sandbox.paypal.com" if PAYPAL_SANDBOX else "https://api-m.paypal.com"
 
 FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:4200')
 
