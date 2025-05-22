@@ -17,6 +17,18 @@ class GroupViewSet(viewsets.ModelViewSet):
     queryset = Group.objects.all().order_by('name')
     serializer_class = GroupSerializer
     pagination_class = CustomPagination
+
+    @extend_schema(
+    description="Partially update a group/role",
+    methods=["PATCH"]
+)
+    def partial_update(self, request, *args, **kwargs):
+        """Handle partial updates of group data."""
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)
     
     def get_permissions(self):
         """Define permissions based on action."""
@@ -121,6 +133,18 @@ class PermissionViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = PermissionSerializer
     pagination_class = CustomPagination
     permission_classes = [permissions.IsAdminUser]
+
+    @extend_schema(
+    description="Partially update a group/role",
+    methods=["PATCH"]
+)
+    def partial_update(self, request, *args, **kwargs):
+        """Handle partial updates of group data."""
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)
     
     @extend_schema(
         description="List available permissions, optionally filtered by app"

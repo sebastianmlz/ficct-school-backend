@@ -32,6 +32,18 @@ class UserViewSet(viewsets.ModelViewSet):
         if self.action == 'list':
             return UserListSerializer
         return UserSerializer
+        
+    @extend_schema(
+        description="Partially update a user",
+        methods=["PATCH"]
+    )
+    def partial_update(self, request, *args, **kwargs):
+        """Handle partial updates of user data."""
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)
     
     @extend_schema(
         request=PasswordChangeSerializer,

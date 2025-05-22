@@ -67,3 +67,15 @@ class TeacherViewSet(viewsets.ModelViewSet):
         
         serializer = CourseListSerializer(courses, many=True)
         return Response(serializer.data)
+    
+    @extend_schema(
+        description="Partially update a teacher record, including user data",
+        methods=["PATCH"]
+    )
+    def partial_update(self, request, *args, **kwargs):
+        """Handle partial updates of teacher data, including nested user data."""
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)

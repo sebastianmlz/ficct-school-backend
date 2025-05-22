@@ -5,21 +5,18 @@ from app.authentication.serializers.user_serializer import UserSerializer
 
 
 class TeacherSerializer(serializers.ModelSerializer):
-    """Serializer for Teacher model with nested user data."""
-    
     user = UserSerializer()
     
     class Meta:
         model = Teacher
         fields = [
-            'id', 'user', 'specialization', 'qualification',
+            'id', 'user', 'teacher_id', 'specialization', 'qualification',
             'years_of_experience', 'date_joined', 'employment_status',
             'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
     
     def create(self, validated_data):
-        """Create a teacher with nested user data."""
         user_data = validated_data.pop('user')
         password = user_data.pop('password', None)
         
@@ -36,7 +33,6 @@ class TeacherSerializer(serializers.ModelSerializer):
         return teacher
     
     def update(self, instance, validated_data):
-        """Update teacher with nested user data."""
         user_data = validated_data.pop('user', {})
         password = user_data.pop('password', None)
         

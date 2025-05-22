@@ -64,6 +64,18 @@ class StudentViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
     
     @extend_schema(
+        description="Partially update a student record, including user data",
+        methods=["PATCH"]
+    )
+    def partial_update(self, request, *args, **kwargs):
+        """Handle partial updates of student data, including nested user data."""
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)
+    
+    @extend_schema(
         description="Get detailed profile of a student with academic information"
     )
     @action(detail=True, methods=['get'])
