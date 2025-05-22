@@ -57,21 +57,14 @@ class UserViewSet(viewsets.ModelViewSet):
         permission_classes=[permissions.IsAuthenticated]
     )
     def change_password(self, request, pk=None):
-        """Change password for a user, with old password verification."""
         user = self.get_object()
         
-        if str(user.id) != str(request.user.id) and not request.user.is_staff:
-            return Response(
-                {"detail": "You don't have permission to change this user's password."},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
-        serializer = self.get_serializer(data=request.data)
+        serializer = PasswordChangeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
         if not user.check_password(serializer.validated_data['old_password']):
             return Response(
-                {"old_password": "Wrong password."},
+                {"old_password": "Contraseña incorrecta."},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
