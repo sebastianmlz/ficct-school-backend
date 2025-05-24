@@ -1,12 +1,12 @@
-from rest_framework import viewsets, permissions
+from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework import status
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from django.db.models import Q
+from django.db import transaction
 import logging
 
-from app.authentication.models import Student
+from app.authentication.models import Student, User
 from app.authentication.serializers import StudentSerializer, StudentListSerializer
 from core.pagination import CustomPagination
 
@@ -29,6 +29,25 @@ class StudentViewSet(viewsets.ModelViewSet):
         if self.action == 'list':
             return StudentListSerializer
         return StudentSerializer
+    
+    def create(self, request, *args, **kwargs):
+        try:
+            with transaction.atomic():
+                serializer = self.get_serializer(data=request.data)
+                serializer.is_valid(raise_exception=True)
+                self.perform_create(serializer)
+                headers = self.get_success_headers(serializer.data)
+                return Response(
+                    serializer.data, 
+                    status=status.HTTP_201_CREATED, 
+                    headers=headers
+                )
+        except Exception as e:
+            logger.error(f"Error creating student: {str(e)}")
+            return Response(
+                {"detail": f"Error creating student: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
     
     @extend_schema(
         parameters=[
@@ -63,10 +82,6 @@ class StudentViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
     
-    @extend_schema(
-        description="Partially update a student record, including user data",
-        methods=["PATCH"]
-    )
     def partial_update(self, request, *args, **kwargs):
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=True)
@@ -74,9 +89,6 @@ class StudentViewSet(viewsets.ModelViewSet):
         self.perform_update(serializer)
         return Response(serializer.data)
     
-    @extend_schema(
-        description="Get detailed profile of a student with academic information"
-    )
     @action(detail=True, methods=['get'], permission_classes=[permissions.IsAuthenticated])
     def profile(self, request, pk=None):
         student = self.get_object()

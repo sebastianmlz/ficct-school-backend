@@ -1,17 +1,21 @@
-from rest_framework import viewsets, permissions
+from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from django.db.models import Q
+from django.db import transaction
+import logging
 
 from app.authentication.models import Teacher
 from app.authentication.serializers import TeacherSerializer, TeacherListSerializer
 from app.academic.serializers import CourseListSerializer
 from core.pagination import CustomPagination
 
+logger = logging.getLogger(__name__)
+
 @extend_schema(tags=['Teachers'])
 class TeacherViewSet(viewsets.ModelViewSet):
-    queryset = Teacher.objects.all().order_by('-created_at')
+    queryset = Teacher.objects.select_related('user').all().order_by('-created_at')
     serializer_class = TeacherSerializer
     pagination_class = CustomPagination
     
@@ -26,6 +30,25 @@ class TeacherViewSet(viewsets.ModelViewSet):
         if self.action == 'list':
             return TeacherListSerializer
         return TeacherSerializer
+    
+    def create(self, request, *args, **kwargs):
+        try:
+            with transaction.atomic():
+                serializer = self.get_serializer(data=request.data)
+                serializer.is_valid(raise_exception=True)
+                self.perform_create(serializer)
+                headers = self.get_success_headers(serializer.data)
+                return Response(
+                    serializer.data, 
+                    status=status.HTTP_201_CREATED, 
+                    headers=headers
+                )
+        except Exception as e:
+            logger.error(f"Error creating teacher: {str(e)}")
+            return Response(
+                {"detail": f"Error creating teacher: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
     
     @extend_schema(
         parameters=[
@@ -42,7 +65,7 @@ class TeacherViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(
                 Q(user__first_name__icontains=search) |
                 Q(user__last_name__icontains=search) |
-                Q(user__id__icontains=search)
+                Q(teacher_id__icontains=search)
             )
         
         specialization = request.query_params.get('specialization', None)
@@ -57,9 +80,6 @@ class TeacherViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
     
-    @extend_schema(
-        description="Get courses assigned to this teacher"
-    )
     @action(detail=True, methods=['get'])
     def courses(self, request, pk=None):
         teacher = self.get_object()
@@ -68,12 +88,7 @@ class TeacherViewSet(viewsets.ModelViewSet):
         serializer = CourseListSerializer(courses, many=True)
         return Response(serializer.data)
     
-    @extend_schema(
-        description="Partially update a teacher record, including user data",
-        methods=["PATCH"]
-    )
     def partial_update(self, request, *args, **kwargs):
-        """Handle partial updates of teacher data, including nested user data."""
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
