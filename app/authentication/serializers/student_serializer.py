@@ -66,12 +66,13 @@ class StudentListSerializer(serializers.ModelSerializer):
     user_id = serializers.IntegerField(source='user.id', read_only=True)
     full_name = serializers.CharField(source='user.full_name')
     email = serializers.EmailField(source='user.email')
+    current_course_name = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Student
+        fields = ['user_id', 'student_id', 'full_name', 'email', 'current_course_name']
     
     @extend_schema_field(str)
     def get_current_course_name(self, obj) -> Optional[str]:
         course = obj.current_course
         return course.name if course else None
-    
-    class Meta:
-        model = Student
-        fields = ['user_id', 'student_id', 'full_name', 'email', 'current_course_name']
