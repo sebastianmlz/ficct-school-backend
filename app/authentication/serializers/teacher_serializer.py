@@ -10,11 +10,11 @@ class TeacherSerializer(serializers.ModelSerializer):
     class Meta:
         model = Teacher
         fields = [
-            'id', 'user', 'teacher_id', 'specialization', 'qualification',
+            'user', 'teacher_id', 'specialization', 'qualification',
             'years_of_experience', 'date_joined', 'employment_status',
             'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['created_at', 'updated_at']
     
     def create(self, validated_data):
         user_data = validated_data.pop('user')
@@ -53,11 +53,9 @@ class TeacherSerializer(serializers.ModelSerializer):
 
 
 class TeacherListSerializer(serializers.ModelSerializer):
-    """Simplified serializer for listing teachers."""
-    
-    full_name = serializers.CharField(source='user.full_name')
-    email = serializers.EmailField(source='user.email')
+    user_id = serializers.IntegerField(source='user.id', read_only=True)
+    user_full_name = serializers.CharField(source='user.full_name', read_only=True)
     
     class Meta:
         model = Teacher
-        fields = ['id', 'teacher_id', 'full_name', 'email', 'specialization', 'employment_status']
+        fields = ['user_id', 'user_full_name', 'teacher_id', 'specialization', 'years_of_experience']
