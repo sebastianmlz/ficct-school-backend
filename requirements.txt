@@ -3,6 +3,7 @@ djangorestframework
 djangorestframework-simplejwt==5.3.1
 django-cors-headers==4.2.0
 django-storages==1.14.2
+django-filter
 requests
 psycopg2-binary
 reportlab
