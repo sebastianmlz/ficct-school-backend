@@ -4,3 +4,5 @@ from .period_serializer import PeriodSerializer, PeriodListSerializer
 from .subject_serializer import SubjectSerializer, SubjectListSerializer
 from .grade_serializer import GradeSerializer, GradeListSerializer
 from .enrollment_serializer import EnrollmentSerializer, EnrollmentListSerializer
+from .attendance_serializer import AttendanceSerializer, AttendanceListSerializer
+from .participation_serializer import ParticipationSerializer, ParticipationListSerializer

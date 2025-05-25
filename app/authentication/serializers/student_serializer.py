@@ -29,36 +29,31 @@ class StudentSerializer(serializers.ModelSerializer):
     
     def create(self, validated_data):
         user_data = validated_data.pop('user')
-        password = user_data.pop('password', None)
+        groups_data = user_data.pop('groups', [])
+        user = User.objects.create_user(**user_data)
         
-        user = User(**user_data)
-        if password:
-            user.set_password(password)
-        user.save()
-        
+        if groups_data:
+            user.groups.set(groups_data)
+        else:
+            student_group = Group.objects.get(name='Student')
+            user.groups.add(student_group)
+            
         student = Student.objects.create(user=user, **validated_data)
-        
-        student_group = Group.objects.get(name='Student')
-        user.groups.add(student_group)
-        
         return student
-    
+
     def update(self, instance, validated_data):
-        user_data = validated_data.pop('user', {})
-        password = user_data.pop('password', None)
-        
-        user = instance.user
-        for attr, value in user_data.items():
-            setattr(user, attr, value)
-        
-        if password:
-            user.set_password(password)
-        
-        user.save()
-        
+        if 'user' in validated_data:
+            user_data = validated_data.pop('user')
+            if 'groups' in user_data:
+                groups_data = user_data.pop('groups')
+                instance.user.groups.set(groups_data)
+                
+            for attr, value in user_data.items():
+                setattr(instance.user, attr, value)
+            instance.user.save()
+            
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
-        
         instance.save()
         return instance
 

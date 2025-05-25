@@ -5,3 +5,4 @@ from .attendance_model import Attendance
 from .period_model import Period
 from .course_model import Course
 from .teacher_assignment_model import TeacherAssignment
+from .participation_model import Participation

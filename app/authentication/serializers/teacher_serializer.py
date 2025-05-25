@@ -3,7 +3,6 @@ from django.contrib.auth.models import Group
 from app.authentication.models import Teacher, User
 from app.authentication.serializers.user_serializer import UserSerializer
 
-
 class TeacherSerializer(serializers.ModelSerializer):
     user = UserSerializer()
     
@@ -18,44 +17,39 @@ class TeacherSerializer(serializers.ModelSerializer):
     
     def create(self, validated_data):
         user_data = validated_data.pop('user')
-        password = user_data.pop('password', None)
+        groups_data = user_data.pop('groups', [])
+        user = User.objects.create_user(**user_data)
         
-        user = User(**user_data)
-        if password:
-            user.set_password(password)
-        user.save()
-        
+        if groups_data:
+            user.groups.set(groups_data)
+        else:
+            teacher_group = Group.objects.get(name='Teacher')
+            user.groups.add(teacher_group)
+            
         teacher = Teacher.objects.create(user=user, **validated_data)
-        
-        teacher_group = Group.objects.get(name='Teacher')
-        user.groups.add(teacher_group)
-        
         return teacher
-    
+
     def update(self, instance, validated_data):
-        user_data = validated_data.pop('user', {})
-        password = user_data.pop('password', None)
-        
-        user = instance.user
-        for attr, value in user_data.items():
-            setattr(user, attr, value)
-        
-        if password:
-            user.set_password(password)
-        
-        user.save()
-        
+        if 'user' in validated_data:
+            user_data = validated_data.pop('user')
+            if 'groups' in user_data:
+                groups_data = user_data.pop('groups')
+                instance.user.groups.set(groups_data)
+                
+            for attr, value in user_data.items():
+                setattr(instance.user, attr, value)
+            instance.user.save()
+            
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
-        
         instance.save()
         return instance
 
-
 class TeacherListSerializer(serializers.ModelSerializer):
     user_id = serializers.IntegerField(source='user.id', read_only=True)
-    user_full_name = serializers.CharField(source='user.full_name', read_only=True)
+    full_name = serializers.CharField(source='user.full_name')
+    email = serializers.EmailField(source='user.email')
     
     class Meta:
         model = Teacher
-        fields = ['user_id', 'user_full_name', 'teacher_id', 'specialization', 'years_of_experience']
+        fields = ['user_id', 'teacher_id', 'full_name', 'email', 'specialization']
