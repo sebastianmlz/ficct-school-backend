@@ -15,10 +15,10 @@ class GradeViewSet(viewsets.ModelViewSet):
     
     def get_permissions(self):
         if self.action in ['list', 'retrieve', 'student_grades']:
-            permission_classes = [permissions.IsAuthenticated]
-        else:
-            permission_classes = [permissions.IsAdminUser]
-        return [permission() for permission in permission_classes]
+            return [permissions.IsAuthenticated()]
+        elif self.action in ['create', 'update', 'partial_update'] and hasattr(self.request.user, 'teacher_profile'):
+            return [permissions.IsAuthenticated()]
+        return [permissions.IsAdminUser()]
     
     def get_serializer_class(self):
         if self.action == 'list':
@@ -61,8 +61,7 @@ class GradeViewSet(viewsets.ModelViewSet):
             OpenApiParameter(name='period', description='Filter by period ID', type=str),
             OpenApiParameter(name='min_value', description='Filter by minimum grade value', type=float),
             OpenApiParameter(name='max_value', description='Filter by maximum grade value', type=float),
-        ],
-        description="List grades with optional filtering"
+        ]
     )
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
@@ -99,8 +98,7 @@ class GradeViewSet(viewsets.ModelViewSet):
         parameters=[
             OpenApiParameter(name='student_id', description='Student ID', type=str, required=True),
             OpenApiParameter(name='period_id', description='Period ID (defaults to active period)', type=str),
-        ],
-        description="Get all grades for a specific student"
+        ]
     )
     @action(detail=False, methods=['get'])
     def student_grades(self, request):

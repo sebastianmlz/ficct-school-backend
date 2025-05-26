@@ -19,10 +19,10 @@ class ParticipationViewSet(viewsets.ModelViewSet):
     
     def get_permissions(self):
         if self.action in ['list', 'retrieve', 'student_participation']:
-            permission_classes = [permissions.IsAuthenticated]
-        else:
-            permission_classes = [permissions.IsAdminUser]
-        return [permission() for permission in permission_classes]
+            return [permissions.IsAuthenticated()]
+        elif self.action in ['create', 'update', 'partial_update'] and hasattr(self.request.user, 'teacher_profile'):
+            return [permissions.IsAuthenticated()]
+        return [permissions.IsAdminUser()]
     
     def get_serializer_class(self):
         if self.action == 'list':
@@ -66,8 +66,7 @@ class ParticipationViewSet(viewsets.ModelViewSet):
             OpenApiParameter(name='level', description='Filter by participation level', type=str),
             OpenApiParameter(name='from_date', description='Filter from date (YYYY-MM-DD)', type=str),
             OpenApiParameter(name='to_date', description='Filter to date (YYYY-MM-DD)', type=str),
-        ],
-        description="List participation records with optional filtering"
+        ]
     )
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
@@ -103,8 +102,7 @@ class ParticipationViewSet(viewsets.ModelViewSet):
         parameters=[
             OpenApiParameter(name='student_id', description='Student ID', type=str, required=True),
             OpenApiParameter(name='period_id', description='Period ID (defaults to active period)', type=str),
-        ],
-        description="Get participation records for a specific student"
+        ]
     )
     @action(detail=False, methods=['get'])
     def student_participation(self, request):

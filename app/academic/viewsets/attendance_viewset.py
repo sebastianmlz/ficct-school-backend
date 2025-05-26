@@ -19,6 +19,8 @@ class AttendanceViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ['list', 'retrieve', 'student_attendance']:
             return [permissions.IsAuthenticated()]
+        elif self.action in ['create', 'update', 'partial_update'] and hasattr(self.request.user, 'teacher_profile'):
+            return [permissions.IsAuthenticated()]
         return [permissions.IsAdminUser()]
 
     def get_serializer_class(self):
