@@ -3,7 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from django.db.models import Q, Count
-from app.academic.models import Course, Enrollment
+from app.academic.models import Course, Enrollment, Period, TeacherAssignment
 from app.academic.serializers import CourseSerializer, CourseListSerializer
 from app.authentication.serializers import StudentListSerializer
 from core.pagination import CustomPagination
@@ -28,12 +28,27 @@ class CourseViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         qs = super().get_queryset()
+        
         if self.request.user.is_staff or self.request.user.is_superuser:
             return qs
-        if hasattr(self.request.user, 'teacher'):
-            return qs.filter(teacherassignments__teacher=self.request.user.teacher)
-        if hasattr(self.request.user, 'student'):
-            return qs.filter(enrollments__student=self.request.user.student)
+            
+        active_period = Period.objects.filter(is_active=True).first()
+        
+        if hasattr(self.request.user, 'teacher_profile'):
+            teacher = self.request.user.teacher_profile
+            return qs.filter(
+                teacher_assignments__teacher=teacher,
+                teacher_assignments__period=active_period
+            ).distinct()
+            
+        if hasattr(self.request.user, 'student_profile'):
+            student = self.request.user.student_profile
+            return qs.filter(
+                enrollments__student=student,
+                enrollments__period=active_period,
+                enrollments__status='active'
+            ).distinct()
+            
         return qs.none()
     
     @extend_schema(
@@ -68,7 +83,12 @@ class CourseViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'])
     def students(self, request, pk=None):
         course = self.get_object()
-        enrollments = Enrollment.objects.filter(course=course, status='active')
+        active_period = Period.objects.filter(is_active=True).first()
+        enrollments = Enrollment.objects.filter(
+            course=course, 
+            status='active',
+            period=active_period
+        )
         students = [enrollment.student for enrollment in enrollments]
         page = self.paginate_queryset(students)
         if page is not None:

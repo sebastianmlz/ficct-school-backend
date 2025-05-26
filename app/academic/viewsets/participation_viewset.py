@@ -5,7 +5,7 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 from django.db.models import Q
 from django.db import transaction
 import logging
-from app.academic.models import Participation, Period
+from app.academic.models import Participation, Period, TeacherAssignment
 from app.academic.serializers import ParticipationSerializer, ParticipationListSerializer
 from core.pagination import CustomPagination
 
@@ -31,12 +31,30 @@ class ParticipationViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         qs = super().get_queryset()
+        
         if self.request.user.is_staff or self.request.user.is_superuser:
             return qs
-        if hasattr(self.request.user, 'teacher'):
-            return qs.filter(course__teacherassignments__teacher=self.request.user.teacher).distinct()
-        if hasattr(self.request.user, 'student'):
-            return qs.filter(student=self.request.user.student)
+            
+        active_period = Period.objects.filter(is_active=True).first()
+        
+        if hasattr(self.request.user, 'teacher_profile'):
+            teacher = self.request.user.teacher_profile
+            subject_ids = TeacherAssignment.objects.filter(
+                teacher=teacher, 
+                period=active_period
+            ).values_list('subject_id', flat=True)
+            
+            return qs.filter(
+                period=active_period,
+                subject_id__in=subject_ids
+            ).distinct()
+            
+        if hasattr(self.request.user, 'student_profile'):
+            return qs.filter(
+                student=self.request.user.student_profile,
+                period=active_period
+            )
+            
         return qs.none()
     
     @extend_schema(

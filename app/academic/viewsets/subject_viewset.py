@@ -3,7 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from django.db.models import Q
-from app.academic.models import Subject, Course
+from app.academic.models import Subject, Course, TeacherAssignment, Period, Enrollment
 from app.academic.serializers import SubjectSerializer, SubjectListSerializer, CourseListSerializer
 from core.pagination import CustomPagination
 
@@ -27,15 +27,33 @@ class SubjectViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         qs = super().get_queryset()
+        
         if self.request.user.is_staff or self.request.user.is_superuser:
             return qs
-        if hasattr(self.request.user, 'teacher'):
-            ids = qs.filter(teacherassignments__teacher=self.request.user.teacher).values_list('id', flat=True)
-            return qs.filter(id__in=ids).distinct()
-        if hasattr(self.request.user, 'student'):
-            from app.academic.models import Enrollment
-            course_ids = Enrollment.objects.filter(student=self.request.user.student).values_list('course_id', flat=True)
-            return qs.filter(teacherassignments__course_id__in=course_ids).distinct()
+            
+        active_period = Period.objects.filter(is_active=True).first()
+        
+        if hasattr(self.request.user, 'teacher_profile'):
+            teacher = self.request.user.teacher_profile
+            return qs.filter(
+                teacher_assignments__teacher=teacher,
+                teacher_assignments__period=active_period
+            ).distinct()
+            
+        if hasattr(self.request.user, 'student_profile'):
+            student = self.request.user.student_profile
+            course_ids = Enrollment.objects.filter(
+                student=student,
+                period=active_period,
+                status='active'
+            ).values_list('course_id', flat=True)
+            
+            if course_ids:
+                return qs.filter(
+                    teacher_assignments__course_id__in=course_ids,
+                    teacher_assignments__period=active_period
+                ).distinct()
+                
         return qs.none()
     
     @extend_schema(
@@ -52,7 +70,7 @@ class SubjectViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(Q(name__icontains=search) | Q(code__icontains=search))
         course_id = request.query_params.get('course')
         if course_id:
-            queryset = queryset.filter(courses__id=course_id)
+            queryset = queryset.filter(teacher_assignments__course_id=course_id).distinct()
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
@@ -64,7 +82,34 @@ class SubjectViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'])
     def courses(self, request, pk=None):
         subject = self.get_object()
-        courses = subject.courses.all()
+        active_period = Period.objects.filter(is_active=True).first()
+        
+        if self.request.user.is_staff or self.request.user.is_superuser:
+            assignments = TeacherAssignment.objects.filter(subject=subject, period=active_period)
+        elif hasattr(self.request.user, 'teacher_profile'):
+            assignments = TeacherAssignment.objects.filter(
+                subject=subject,
+                teacher=self.request.user.teacher_profile,
+                period=active_period
+            )
+        else:
+            student = getattr(self.request.user, 'student_profile', None)
+            if not student:
+                return Response([])
+            
+            course_ids = Enrollment.objects.filter(
+                student=student,
+                period=active_period,
+                status='active'
+            ).values_list('course_id', flat=True)
+            
+            assignments = TeacherAssignment.objects.filter(
+                subject=subject,
+                course_id__in=course_ids,
+                period=active_period
+            )
+            
+        courses = [assignment.course for assignment in assignments]
         page = self.paginate_queryset(courses)
         if page is not None:
             serializer = CourseListSerializer(page, many=True)

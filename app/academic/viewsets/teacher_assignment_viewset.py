@@ -2,7 +2,7 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from django.db.models import Q
-from app.academic.models import TeacherAssignment
+from app.academic.models import TeacherAssignment, Period
 from app.academic.serializers import TeacherAssignmentSerializer
 from core.pagination import CustomPagination
 
@@ -21,10 +21,30 @@ class TeacherAssignmentViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         qs = super().get_queryset()
+        
         if self.request.user.is_staff or self.request.user.is_superuser:
             return qs
-        if hasattr(self.request.user, 'teacher'):
-            return qs.filter(teacher=self.request.user.teacher)
+            
+        active_period = Period.objects.filter(is_active=True).first()
+        
+        if hasattr(self.request.user, 'teacher_profile'):
+            return qs.filter(
+                teacher=self.request.user.teacher_profile,
+                period=active_period
+            )
+            
+        if hasattr(self.request.user, 'student_profile'):
+            student = self.request.user.student_profile
+            course_ids = student.enrollments.filter(
+                period=active_period,
+                status='active'
+            ).values_list('course_id', flat=True)
+            
+            return qs.filter(
+                course_id__in=course_ids,
+                period=active_period
+            ).distinct()
+            
         return qs.none()
     
     @extend_schema(

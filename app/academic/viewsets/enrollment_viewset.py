@@ -3,7 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from django.db.models import Q
-from app.academic.models import Enrollment
+from app.academic.models import Enrollment, Period
 from app.academic.serializers import EnrollmentSerializer, EnrollmentListSerializer
 from core.pagination import CustomPagination
 
@@ -27,12 +27,26 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         qs = super().get_queryset()
+        
         if self.request.user.is_staff or self.request.user.is_superuser:
             return qs
-        if hasattr(self.request.user, 'student'):
-            return qs.filter(student=self.request.user.student)
-        if hasattr(self.request.user, 'teacher'):
-            return qs.filter(course__teacherassignments__teacher=self.request.user.teacher).distinct()
+            
+        active_period = Period.objects.filter(is_active=True).first()
+        
+        if hasattr(self.request.user, 'student_profile'):
+            return qs.filter(
+                student=self.request.user.student_profile,
+                period=active_period
+            )
+            
+        if hasattr(self.request.user, 'teacher_profile'):
+            teacher = self.request.user.teacher_profile
+            return qs.filter(
+                course__teacher_assignments__teacher=teacher,
+                course__teacher_assignments__period=active_period,
+                period=active_period
+            ).distinct()
+            
         return qs.none()
     
     @extend_schema(
