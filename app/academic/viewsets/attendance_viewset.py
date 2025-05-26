@@ -56,6 +56,57 @@ class AttendanceViewSet(viewsets.ModelViewSet):
     
     @extend_schema(
         parameters=[
+            OpenApiParameter(name='student', description='Filter by student ID', type=str),
+            OpenApiParameter(name='course', description='Filter by course ID', type=str),
+            OpenApiParameter(name='subject', description='Filter by subject ID', type=str),
+            OpenApiParameter(name='period', description='Filter by period ID', type=str),
+            OpenApiParameter(name='status', description='Filter by attendance status', type=str),
+            OpenApiParameter(name='from_date', description='Filter from date (YYYY-MM-DD)', type=str),
+            OpenApiParameter(name='to_date', description='Filter to date (YYYY-MM-DD)', type=str),
+        ],
+        description="List attendance records with optional filtering"
+    )
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        
+        student_id = request.query_params.get('student')
+        if student_id:
+            queryset = queryset.filter(student_id=student_id)
+        
+        course_id = request.query_params.get('course')
+        if course_id:
+            queryset = queryset.filter(course_id=course_id)
+        
+        subject_id = request.query_params.get('subject')
+        if subject_id:
+            queryset = queryset.filter(subject_id=subject_id)
+        
+        period_id = request.query_params.get('period')
+        if period_id:
+            queryset = queryset.filter(period_id=period_id)
+        
+        status = request.query_params.get('status')
+        if status:
+            queryset = queryset.filter(status=status)
+        
+        from_date = request.query_params.get('from_date')
+        if from_date:
+            queryset = queryset.filter(date__gte=from_date)
+        
+        to_date = request.query_params.get('to_date')
+        if to_date:
+            queryset = queryset.filter(date__lte=to_date)
+        
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+    
+    @extend_schema(
+        parameters=[
             OpenApiParameter(name='student_id', description='Student ID', type=str, required=True),
             OpenApiParameter(name='period_id', description='Period ID (defaults to active period)', type=str),
         ]

@@ -47,9 +47,8 @@ class TeacherSerializer(serializers.ModelSerializer):
 
 class TeacherListSerializer(serializers.ModelSerializer):
     user_id = serializers.IntegerField(source='user.id', read_only=True)
-    full_name = serializers.CharField(source='user.full_name')
-    email = serializers.EmailField(source='user.email')
+    user_full_name = serializers.CharField(source='user.full_name', read_only=True)
     
     class Meta:
         model = Teacher
-        fields = ['user_id', 'teacher_id', 'full_name', 'email', 'specialization']
+        fields = ['user_id', 'user_full_name', 'teacher_id', 'specialization', 'years_of_experience']
