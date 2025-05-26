@@ -1,9 +1,7 @@
 from rest_framework import viewsets, permissions, status
-from rest_framework.decorators import action
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from django.db.models import Q
-
 from app.academic.models import TeacherAssignment
 from app.academic.serializers import TeacherAssignmentSerializer
 from core.pagination import CustomPagination
@@ -15,11 +13,19 @@ class TeacherAssignmentViewSet(viewsets.ModelViewSet):
     pagination_class = CustomPagination
     
     def get_permissions(self):
-        if self.action == 'list' or self.action == 'retrieve':
+        if self.action in ['list', 'retrieve']:
             permission_classes = [permissions.IsAuthenticated]
         else:
             permission_classes = [permissions.IsAdminUser]
         return [permission() for permission in permission_classes]
+    
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if self.request.user.is_staff or self.request.user.is_superuser:
+            return qs
+        if hasattr(self.request.user, 'teacher'):
+            return qs.filter(teacher=self.request.user.teacher)
+        return qs.none()
     
     @extend_schema(
         parameters=[
@@ -32,27 +38,21 @@ class TeacherAssignmentViewSet(viewsets.ModelViewSet):
     )
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
-        
         teacher_id = request.query_params.get('teacher')
         if teacher_id:
             queryset = queryset.filter(teacher_id=teacher_id)
-        
         course_id = request.query_params.get('course')
         if course_id:
             queryset = queryset.filter(course_id=course_id)
-        
         subject_id = request.query_params.get('subject')
         if subject_id:
             queryset = queryset.filter(subject_id=subject_id)
-        
         period_id = request.query_params.get('period')
         if period_id:
             queryset = queryset.filter(period_id=period_id)
-        
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
             return self.get_paginated_response(serializer.data)
-        
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)

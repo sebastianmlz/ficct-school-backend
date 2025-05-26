@@ -3,7 +3,6 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from django.db.models import Q, Count
-
 from app.academic.models import Course, Enrollment
 from app.academic.serializers import CourseSerializer, CourseListSerializer
 from app.authentication.serializers import StudentListSerializer
@@ -27,6 +26,16 @@ class CourseViewSet(viewsets.ModelViewSet):
             return CourseListSerializer
         return CourseSerializer
     
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if self.request.user.is_staff or self.request.user.is_superuser:
+            return qs
+        if hasattr(self.request.user, 'teacher'):
+            return qs.filter(teacherassignments__teacher=self.request.user.teacher)
+        if hasattr(self.request.user, 'student'):
+            return qs.filter(enrollments__student=self.request.user.student)
+        return qs.none()
+    
     @extend_schema(
         parameters=[
             OpenApiParameter(name='search', description='Search by name or code', type=str),
@@ -37,49 +46,33 @@ class CourseViewSet(viewsets.ModelViewSet):
     )
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
-        
         search = request.query_params.get('search')
         if search:
-            queryset = queryset.filter(
-                Q(name__icontains=search) | Q(code__icontains=search)
-            )
-        
+            queryset = queryset.filter(Q(name__icontains=search) | Q(code__icontains=search))
         year = request.query_params.get('year')
         if year:
             queryset = queryset.filter(year=year)
-        
         active = request.query_params.get('active')
         if active is not None:
             is_active = active.lower() == 'true'
             queryset = queryset.filter(is_active=is_active)
-        
         queryset = queryset.annotate(student_count=Count('enrollments'))
-        
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
             return self.get_paginated_response(serializer.data)
-        
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
     
-    @extend_schema(
-        description="Get students enrolled in this course"
-    )
+    @extend_schema(description="Get students enrolled in this course")
     @action(detail=True, methods=['get'])
     def students(self, request, pk=None):
         course = self.get_object()
-        enrollments = Enrollment.objects.filter(
-            course=course, 
-            status='active'
-        )
-        
+        enrollments = Enrollment.objects.filter(course=course, status='active')
         students = [enrollment.student for enrollment in enrollments]
-        
         page = self.paginate_queryset(students)
         if page is not None:
             serializer = StudentListSerializer(page, many=True)
             return self.get_paginated_response(serializer.data)
-        
         serializer = StudentListSerializer(students, many=True)
         return Response(serializer.data)

@@ -3,7 +3,6 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from django.db.models import Q
-
 from app.academic.models import Enrollment
 from app.academic.serializers import EnrollmentSerializer, EnrollmentListSerializer
 from core.pagination import CustomPagination
@@ -26,6 +25,16 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
             return EnrollmentListSerializer
         return EnrollmentSerializer
     
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if self.request.user.is_staff or self.request.user.is_superuser:
+            return qs
+        if hasattr(self.request.user, 'student'):
+            return qs.filter(student=self.request.user.student)
+        if hasattr(self.request.user, 'teacher'):
+            return qs.filter(course__teacherassignments__teacher=self.request.user.teacher).distinct()
+        return qs.none()
+    
     @extend_schema(
         parameters=[
             OpenApiParameter(name='student', description='Filter by student ID', type=str),
@@ -38,32 +47,25 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
     )
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
-        
         student_id = request.query_params.get('student')
         if student_id:
             queryset = queryset.filter(student_id=student_id)
-        
         course_id = request.query_params.get('course')
         if course_id:
             queryset = queryset.filter(course_id=course_id)
-        
         subject_id = request.query_params.get('subject')
         if subject_id:
             queryset = queryset.filter(subject_id=subject_id)
-        
         period_id = request.query_params.get('period')
         if period_id:
             queryset = queryset.filter(period_id=period_id)
-        
-        status = request.query_params.get('status')
-        if status:
-            queryset = queryset.filter(status=status)
-        
+        status_param = request.query_params.get('status')
+        if status_param:
+            queryset = queryset.filter(status=status_param)
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
             return self.get_paginated_response(serializer.data)
-        
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
     
@@ -77,11 +79,7 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
     def student_enrollments(self, request):
         student_id = request.query_params.get('student_id')
         if not student_id:
-            return Response(
-                {"detail": "student_id parameter is required."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        enrollments = Enrollment.objects.filter(student_id=student_id)
+            return Response({"detail": "student_id parameter is required."}, status=status.HTTP_400_BAD_REQUEST)
+        enrollments = self.get_queryset().filter(student_id=student_id)
         serializer = self.get_serializer(enrollments, many=True)
         return Response(serializer.data)

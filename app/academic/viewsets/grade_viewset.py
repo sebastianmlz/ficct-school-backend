@@ -3,7 +3,6 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from django.db.models import Q, Avg
-
 from app.academic.models import Grade, Period
 from app.academic.serializers import GradeSerializer, GradeListSerializer
 from core.pagination import CustomPagination
@@ -26,6 +25,16 @@ class GradeViewSet(viewsets.ModelViewSet):
             return GradeListSerializer
         return GradeSerializer
     
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if self.request.user.is_staff or self.request.user.is_superuser:
+            return qs
+        if hasattr(self.request.user, 'teacher'):
+            return qs.filter(course__teacherassignments__teacher=self.request.user.teacher).distinct()
+        if hasattr(self.request.user, 'student'):
+            return qs.filter(student=self.request.user.student)
+        return qs.none()
+    
     @extend_schema(
         parameters=[
             OpenApiParameter(name='student', description='Filter by student ID', type=str),
@@ -39,19 +48,15 @@ class GradeViewSet(viewsets.ModelViewSet):
     )
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
-        
         student_id = request.query_params.get('student')
         if student_id:
             queryset = queryset.filter(student_id=student_id)
-        
         course_id = request.query_params.get('course')
         if course_id:
             queryset = queryset.filter(course_id=course_id)
-            
         subject_id = request.query_params.get('subject')
         if subject_id:
             queryset = queryset.filter(subject_id=subject_id)
-        
         period_id = request.query_params.get('period')
         if period_id:
             queryset = queryset.filter(period_id=period_id)
@@ -59,20 +64,16 @@ class GradeViewSet(viewsets.ModelViewSet):
             active_period = Period.objects.filter(is_active=True).first()
             if active_period:
                 queryset = queryset.filter(period=active_period)
-        
         min_value = request.query_params.get('min_value')
         if min_value:
             queryset = queryset.filter(value__gte=float(min_value))
-        
         max_value = request.query_params.get('max_value')
         if max_value:
             queryset = queryset.filter(value__lte=float(max_value))
-        
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
             return self.get_paginated_response(serializer.data)
-        
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
     
@@ -87,39 +88,26 @@ class GradeViewSet(viewsets.ModelViewSet):
     def student_grades(self, request):
         student_id = request.query_params.get('student_id')
         if not student_id:
-            return Response(
-                {"detail": "student_id parameter is required."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
+            return Response({"detail": "student_id parameter is required."}, status=status.HTTP_400_BAD_REQUEST)
         period_id = request.query_params.get('period_id')
         if period_id:
             period = Period.objects.filter(id=period_id).first()
         else:
             period = Period.objects.filter(is_active=True).first()
-        
         if not period:
-            return Response(
-                {"detail": "No valid period found."},
-                status=status.HTTP_404_NOT_FOUND
-            )
-        
-        grades = Grade.objects.filter(student_id=student_id, period=period)
-        
+            return Response({"detail": "No valid period found."}, status=status.HTTP_404_NOT_FOUND)
+        grades = self.get_queryset().filter(student_id=student_id, period=period)
         result = {}
         for grade in grades:
             course_name = grade.course.name
             subject_name = grade.subject.name
-            
             key = f"{course_name} - {subject_name}"
             if key not in result:
                 result[key] = []
-            
             result[key].append({
                 'id': grade.id,
                 'value': grade.value,
                 'comments': grade.comments,
                 'created_at': grade.created_at
             })
-        
         return Response(result)
