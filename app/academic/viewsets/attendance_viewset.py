@@ -11,6 +11,7 @@ from core.pagination import CustomPagination
 
 logger = logging.getLogger(__name__)
 
+@extend_schema(tags=['Attendances'])
 class AttendanceViewSet(viewsets.ModelViewSet):
     queryset = Attendance.objects.all().order_by('-date')
     serializer_class = AttendanceSerializer
