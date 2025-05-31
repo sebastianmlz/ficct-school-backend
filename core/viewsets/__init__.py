@@ -1,1 +1,2 @@
 from core.viewsets.logger_service_viewset import LoggerServiceViewSet
+from core.viewsets.database_viewset import DatabaseBackupDownloadView, DatabaseBackupRestoreView, DatabaseRestoreView
