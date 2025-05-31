@@ -44,17 +44,14 @@ class PerformancePredictionViewSet(viewsets.ViewSet):
         summary="Compare Actual vs. Predicted Performance",
         description="Retrieves actual performance data and predicted performance for a student."
     )
-    @action(detail=True, methods=['get'], url_path='compare-performance', permission_classes=[permissions.IsAuthenticated])
+    @action(detail=True, methods=['get'], url_path='compare-performance')
     def compare_performance(self, request, pk=None):
         try:
-            student_id = int(pk)
-            student = get_object_or_404(Student, pk=student_id)
-        except ValueError:
-            return Response({"error": "Invalid student ID format."}, status=status.HTTP_400_BAD_REQUEST)
+            student = Student.objects.get(pk=pk)
         except Student.DoesNotExist:
-            return Response({"error": "Student not found."}, status=status.HTTP_404_NOT_FOUND)
-        
-        prediction_data = performance_prediction_service.predict_student_performance(student_id=student.id)
+            return Response({"error": f"Student with ID {pk} not found."}, status=status.HTTP_404_NOT_FOUND)
+            
+        prediction_data = performance_prediction_service.predict_student_performance(student_id=student.pk)
         
         actual_performance_summary = {"message": "No current/recent trimester grade data found for comparison."}
         
@@ -83,7 +80,7 @@ class PerformancePredictionViewSet(viewsets.ViewSet):
                     break
 
         comparison_data = {
-            "student_id": student.id,
+            "student_id": student.pk,
             "student_name": student.user.get_full_name(),
             "predicted_performance": prediction_data,
             "actual_performance_summary": actual_performance_summary
