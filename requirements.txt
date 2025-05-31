@@ -20,3 +20,6 @@ openai
 tiktoken
 stripe
 pandas
+joblib
+numpy
+scikit-learn
