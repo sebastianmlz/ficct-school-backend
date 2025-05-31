@@ -1,22 +1,26 @@
 from django.db import models
-from core.models.base_model import TimestampedModel
+from core.models import TimestampedModel
+from app.authentication.models import Student
+from .subject_model import Subject
+from .period_model import Period
+from .assessment_item_model import AssessmentItem
 
 class Grade(TimestampedModel):
-    student = models.ForeignKey('authentication.Student', on_delete=models.CASCADE, 
-                               related_name='grades')
-    course = models.ForeignKey('academic.Course', on_delete=models.CASCADE,
-                              related_name='grades')
-    subject = models.ForeignKey('academic.Subject', on_delete=models.CASCADE, 
-                               related_name='grades')
-    period = models.ForeignKey('academic.Period', on_delete=models.CASCADE, 
-                              related_name='grades')
-    
-    value = models.FloatField()
-    comments = models.TextField(null=True, blank=True)
-    
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='grades')
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='grades')
+    period = models.ForeignKey(Period, on_delete=models.CASCADE, related_name='grades')
+    assessment_item = models.ForeignKey(AssessmentItem, on_delete=models.CASCADE, related_name='grades', null=True, blank=True)
+    value = models.DecimalField(max_digits=5, decimal_places=2)
+    comment = models.TextField(blank=True, null=True)
+    date_recorded = models.DateField(auto_now_add=True)
+
     class Meta:
-        unique_together = ('student', 'course', 'subject', 'period')
-        ordering = ['-period__start_date', 'student__user__first_name']
-    
+        verbose_name = "Grade"
+        verbose_name_plural = "Grades"
+        ordering = ['-date_recorded', 'student', 'subject']
+        unique_together = ('student', 'assessment_item')
+
     def __str__(self):
-        return f"{self.student} - {self.course.name} - {self.subject.name}: {self.value}"
+        if self.assessment_item:
+            return f"Grade for {self.student} in {self.assessment_item.name}: {self.value}"
+        return f"Grade for {self.student} in {self.subject.name} ({self.period.name}): {self.value}"
