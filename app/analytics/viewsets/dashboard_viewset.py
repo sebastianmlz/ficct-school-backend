@@ -9,7 +9,7 @@ from app.academic.models import Course, Enrollment, Grade, Period
 
 @extend_schema(tags=['Analytics - Dashboards'])
 class DashboardViewSet(viewsets.ViewSet):
-    permission_classes = [permissions.IsAdminUser] # Or IsTeacherOrAdmin
+    permission_classes = [permissions.IsAdminUser]
 
     @extend_schema(
         summary="Get General School Statistics",
@@ -22,9 +22,13 @@ class DashboardViewSet(viewsets.ViewSet):
         active_courses_count = Course.objects.filter(is_active=True).count()
         
         active_period = Period.objects.filter(is_active=True).first()
+        
         active_enrollments_count = 0
         if active_period:
-            active_enrollments_count = Enrollment.objects.filter(period=active_period, status='active').count()
+            active_enrollments_count = Enrollment.objects.filter(
+                period=active_period, 
+                status='active'
+            ).values('student').distinct().count()
 
         overall_avg_grade = Grade.objects.aggregate(Avg('value'))['value__avg']
 
@@ -50,19 +54,28 @@ class DashboardViewSet(viewsets.ViewSet):
         courses_data = []
         courses = Course.objects.filter(is_active=True)
         for course in courses:
-            enrollments_in_course = Enrollment.objects.filter(course=course, period=active_period, status='active')
-            student_ids_in_course = enrollments_in_course.values_list('student_id', flat=True)
+            student_count = Enrollment.objects.filter(
+                course=course, 
+                period=active_period, 
+                status='active'
+            ).values('student').distinct().count()
             
-            avg_grade_in_course = Grade.objects.filter(
-                student_id__in=student_ids_in_course,
-                period=active_period 
+            student_ids = Enrollment.objects.filter(
+                course=course, 
+                period=active_period, 
+                status='active'
+            ).values_list('student_id', flat=True).distinct()
+            
+            avg_grade = Grade.objects.filter(
+                student_id__in=student_ids,
+                assessment_item__trimester__period=active_period
             ).aggregate(Avg('value'))['value__avg']
 
             courses_data.append({
                 "course_id": course.id,
                 "course_name": course.name,
-                "enrolled_students": enrollments_in_course.count(),
-                "average_grade": round(avg_grade_in_course, 2) if avg_grade_in_course else None
+                "enrolled_students": student_count,
+                "average_grade": round(avg_grade, 2) if avg_grade else None
             })
         
         return Response(courses_data, status=status.HTTP_200_OK)
