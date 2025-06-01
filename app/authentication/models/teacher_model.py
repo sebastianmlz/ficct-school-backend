@@ -29,3 +29,26 @@ class Teacher(TimestampedModel):
     
     class Meta:
         ordering = ['user__first_name', 'user__last_name']
+
+    def get_taught_student_ids(self):
+        from app.academic.models import TeacherAssignment, Enrollment
+        
+        teacher_assignments = TeacherAssignment.objects.filter(
+            teacher=self
+        ).values_list('course_id', 'period_id')
+        
+        student_ids = []
+        
+        if teacher_assignments:
+            course_ids = [ta[0] for ta in teacher_assignments]
+            period_ids = [ta[1] for ta in teacher_assignments]
+            
+            enrollments = Enrollment.objects.filter(
+                course_id__in=course_ids,
+                period_id__in=period_ids,
+                status='active'
+            ).values_list('student_id', flat=True).distinct()
+            
+            student_ids = list(enrollments)
+        
+        return student_ids

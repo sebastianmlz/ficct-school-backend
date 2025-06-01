@@ -1,0 +1,1 @@
+from app.reports.models.bulletin_model import Bulletin, BulletinFile, bulletin_file_upload_path

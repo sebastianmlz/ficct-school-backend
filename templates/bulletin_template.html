@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Boletín de Calificaciones - {{ bulletin.trimester.name }}</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; color: #333; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 { margin: 0; color: #2c3e50; }
+        .header p { margin: 5px 0; }
+        .student-info { margin-bottom: 20px; padding: 10px; border: 1px solid #ddd; background-color: #f9f9f9; }
+        .student-info p { margin: 5px 0; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background-color: #f2f2f2; color: #333; }
+        .overall-average { font-weight: bold; font-size: 1.2em; margin-top: 20px; text-align: right; }
+        .footer { text-align: center; margin-top: 40px; font-size: 0.9em; color: #777; }
+        .subject-section { margin-bottom: 15px; }
+        .subject-header { font-weight: bold; font-size: 1.1em; }
+        .assessment-table { margin-left: 20px; margin-top: 5px; width: calc(100% - 20px); }
+        .assessment-table th, .assessment-table td { padding: 6px; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Boletín de Calificaciones</h1>
+        <p>Institución Educativa FICCT School</p>
+        <p>{{ bulletin.trimester.period.name }} - {{ bulletin.trimester.name }}</p>
+    </div>
+
+    <div class="student-info">
+        <p><strong>Estudiante:</strong> {{ bulletin.student.user.get_full_name }}</p>
+        <p><strong>ID Estudiante:</strong> {{ bulletin.student.student_id }}</p>
+        <p><strong>Curso:</strong> {{ course_name }}</p>
+    </div>
+
+    <h2>Detalle de Calificaciones</h2>
+    {% for subject_data in bulletin.grades_data.subjects %}
+    <div class="subject-section">
+        <p class="subject-header">{{ subject_data.subject_name }} - Promedio: {{ subject_data.subject_average|floatformat:2 }}</p>
+        {% if subject_data.assessments %}
+        <table class="assessment-table">
+            <thead>
+                <tr>
+                    <th>Evaluación</th>
+                    <th>Fecha</th>
+                    <th>Calificación</th>
+                    <th>Máx. Puntaje</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for assessment in subject_data.assessments %}
+                <tr>
+                    <td>{{ assessment.name }}</td>
+                    <td>{{ assessment.date }}</td>
+                    <td>{{ assessment.grade_value|floatformat:2 }}</td>
+                    <td>{{ assessment.max_score|floatformat:0 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>No hay evaluaciones registradas para esta materia en este trimestre.</p>
+        {% endif %}
+    </div>
+    {% empty %}
+    <p>No hay calificaciones registradas para este trimestre.</p>
+    {% endfor %}
+
+    <div class="overall-average">
+        Promedio General del Trimestre: {{ bulletin.overall_average|floatformat:2 }}
+    </div>
+
+    <div class="footer">
+        <p>Generado el: {{ bulletin.generated_at|date:"d/m/Y H:i" }}</p>
+        <p>&copy; {{ bulletin.generated_at|date:"Y" }} FICCT School. Todos los derechos reservados.</p>
+    </div>
+</body>
+</html>

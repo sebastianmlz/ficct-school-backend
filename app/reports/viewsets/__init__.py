@@ -1,0 +1,1 @@
+from app.reports.viewsets.bulletin_viewset import BulletinViewSet

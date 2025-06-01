@@ -1,0 +1,4 @@
+from app.reports.services.bulletin_service import bulletin_service
+from app.reports.services.pdf_service import pdf_bulletin_service
+from app.reports.services.excel_service import excel_bulletin_service
+from app.reports.services.html_service import html_bulletin_service

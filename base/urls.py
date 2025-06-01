@@ -12,6 +12,7 @@ urlpatterns = [
     path('api/academic/', include('app.academic.urls')),
     path('api/analytics/', include('app.analytics.urls')),
     path('api/core/', include('core.urls')),
+    path('api/reports/', include('app.reports.urls')),
 ]
 
 urlpatterns = get_spectacular_urls() + urlpatterns
