@@ -1,5 +1,6 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
+from django.db import transaction, IntegrityError
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
 from app.academic.models import Grade, Period
@@ -59,3 +60,31 @@ class GradeViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
+    
+    def create(self, request, *args, **kwargs):
+        try:
+            with transaction.atomic():
+                return super().create(request, *args, **kwargs)
+        except IntegrityError:
+            student_id = request.data.get('student')
+            assessment_item_id = request.data.get('assessment_item_id')
+            existing_grade = Grade.objects.filter(
+                student_id=student_id, 
+                assessment_item_id=assessment_item_id
+            ).first()
+            
+            if existing_grade:
+                return Response(
+                    {"detail": "A grade already exists for this student and assessment item", 
+                    "existing_id": existing_grade.id},
+                    status=status.HTTP_409_CONFLICT
+                )
+            return Response(
+                {"detail": "Integrity error when creating the grade"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            return Response(
+                {"detail": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
